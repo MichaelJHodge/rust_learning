@@ -46,14 +46,13 @@ Trust me.";
 //its safety checking incorrectly.
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-    results
+    //this code uses the filter adaptor to keep
+    //only the lines that line.contains(query) returns true for. We then
+    //collect the matching lines into another vector with collect.
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 //Basically the same as the above function, but instead we lowercase the query and
@@ -64,16 +63,10 @@ pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
 //ampersand because the signature of contains is defined to take a string slice.
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let query = query.to_lowercase();
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        if line.to_lowercase().contains(&query) {
-            results.push(line);
-        }
-    }
-
-    results
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 //This means that the trait object Box<dyn Error> will return a type that
@@ -108,16 +101,25 @@ pub struct Config {
 //it makes sense to sacrifice for some simplicity.
 
 impl Config {
-    pub fn new(args: &[String]) -> Result<Config, &'static str> {
+    pub fn new(mut args: env::Args) -> Result<Config, &'static str> {
+        args.next();
+
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
+
+        let filename = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a file name"),
+        };
+
         if args.len() < 3 {
             return Err("Not enough arguments");
         }
         if args.len() > 3 {
             return Err("Too many arguments");
         }
-
-        let query = args[1].clone();
-        let filename = args[2].clone();
 
         //Keeps track of the new env variable we want. The is_err method checks whether or not
         //it's an error and therefore unset - meaning we should do a case-sensitive search. If it is
