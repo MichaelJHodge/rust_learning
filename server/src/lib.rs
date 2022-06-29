@@ -47,6 +47,8 @@ impl ThreadPool {
         ThreadPool { workers, sender }
     }
 
+    ///# Executes
+
     pub fn execute<F>(&self, f: F)
     where
         F: FnOnce() + Send + 'static,
@@ -75,7 +77,9 @@ impl Drop for ThreadPool {
     fn drop(&mut self) {
         println!("Sending terminate message to all workers!");
         for _ in &self.workers {
-            self.sender.send(Message::Terminate).unwrap();
+            self.sender
+                .send(Message::Terminate)
+                .expect("Unable to send down message.");
         }
         println!("Shutting down all workers.");
 
@@ -87,7 +91,9 @@ impl Drop for ThreadPool {
             //Then we call join on thread. If a worker's thread is already None, we know that the worker has
             //already had its thread cleaned up, so nothing happens in that case.
             if let Some(thread) = worker.thread.take() {
-                thread.join().unwrap();
+                thread
+                    .join()
+                    .expect("Unable to join the associated thread.");
             }
         }
     }
