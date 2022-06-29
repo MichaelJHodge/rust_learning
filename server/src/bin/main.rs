@@ -1,29 +1,36 @@
 //prelude gives us access to traits that let us read from and write
 //to the stream.
 
-use std::fs::read_to_string;
+use server::ThreadPool;
+use std::fs;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
 
-use std::fs;
-
 fn main() {
-    //Bind returns a new TCPListener instance. we call it bind
+    //Bind returns a new TCPListener instance. We call it bind
     //because in networking we say 'binding to a port'.
 
     //This function returns a Result<T,E> type because it could fail.
 
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
 
-    //The incoming method returns an iterator that gives us a sequence
+    //We use this to create a new thread pool with a configurable thread count.
+    let pool = ThreadPool::new(4);
+
+    //The 'incoming' method returns an iterator that gives us a sequence
     //of streams. One stream represents an open connection between the
     //client and server.
     for stream in listener.incoming() {
         //Calling unwrap just terminates the program without any
         //real error handling if the stream has any errors.
         let stream = stream.unwrap();
-        handle_connection(stream);
+
+        //takes a closure the pool should run for each stream. We need this
+        //so it takes the closure and gives it to a thread in the pool to run.
+        pool.execute(|| {
+            handle_connection(stream);
+        });
     }
 }
 
@@ -44,7 +51,9 @@ fn handle_connection(mut stream: TcpStream) {
     let get = b"GET / HTTP/1.1\r\n";
 
     //Then we check if buffer starts with the bytes in get. If so, it means
-    //we have received a well-formed request.
+    //we have received a well-formed request. the let blocks only return the appropriate
+    //values for the status line and filename in a tuple; we then use destructuring to assign these
+    //two values to status_line and filename using a pattern in the let statement, as discussed in Chapter 18.
 
     let (status_line, filename) = if buffer.starts_with(get) {
         ("HTTP/1.1 200 OK", "hello.html")
